@@ -34,9 +34,10 @@ def get_config():
 
   # data
   data = config.data
-  data.channels = 3
-  data.centered = True
-  data.dataset = 'mnist'
+  data.channels = 1
+  data.centered = False
+  data.dataset = 'MNIST'
+  data.image_size = 28
 
 
   # sampling

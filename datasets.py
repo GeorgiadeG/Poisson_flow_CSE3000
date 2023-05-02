@@ -18,7 +18,10 @@
 import jax
 import tensorflow as tf
 import tensorflow_datasets as tfds
+import numpy as np
 
+def grayscale_to_rgb(image):
+    return np.stack((image, image, image), axis=-1)
 
 def get_data_scaler(config):
   """Data normalizer. Assume data are always in [0, 1]."""
@@ -104,6 +107,22 @@ def get_dataset(config, uniform_dequantization=False, evaluation=False):
     dataset_builder = tfds.builder('mnist')
     train_split_name = 'train'
     eval_split_name = 'test'
+
+    def preprocess_fn(d):
+        """Basic preprocessing function scales data to [0, 1) and randomly flips."""
+        img = resize_op(d['image'])
+        img = tf.image.convert_image_dtype(img, tf.float32)
+        
+        # Convert grayscale to RGB
+        img = tf.py_function(grayscale_to_rgb, [img], tf.float32)
+        img.set_shape([config.data.image_size, config.data.image_size, 3])
+        
+        if config.data.random_flip and not evaluation:
+            img = tf.image.random_flip_left_right(img)
+        if uniform_dequantization:
+            img = (tf.random.uniform(img.shape, dtype=tf.float32) + img * 255.) / 256.
+
+        return dict(image=img, label=d.get('label', None))
 
     def resize_op(img):
       img = tf.image.convert_image_dtype(img, tf.float32)
