@@ -36,6 +36,8 @@ def get_config():
   data = config.data
   data.channels = 3
   data.centered = True
+  data.dataset = 'mnist'
+
 
   # sampling
   sampling = config.sampling
