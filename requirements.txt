@@ -1,5 +1,5 @@
 absl_py==1.2.0
-jax==0.3.16
+jax
 ml_collections==0.1.0
 numpy==1.22.4
 pandas==1.4.2
@@ -11,6 +11,7 @@ tensorflow-probability==0.17.0
 tensorflow_datasets==4.5.2
 tensorflow_gan==2.0.0
 tensorflow_hub==0.12.0
-torch==1.12.1+cu116
-torchvision==0.13.1+cu116
+torch
+torchvision
 tqdm==4.64.0
+Ninja
