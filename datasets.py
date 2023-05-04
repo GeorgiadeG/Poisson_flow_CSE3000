@@ -121,7 +121,6 @@ def get_dataset(config, uniform_dequantization=False, evaluation=False):
             img = tf.image.random_flip_left_right(img)
         if uniform_dequantization:
             img = (tf.random.uniform(img.shape, dtype=tf.float32) + img * 255.) / 256.
-
         return dict(image=img, label=d.get('label', None))
 
     def resize_op(img):
