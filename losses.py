@@ -127,6 +127,18 @@ def get_loss_fn(sde, train, reduce_mean=True, continuous=True, eps=1e-5, method_
       loss = reduce_op(loss.reshape(loss.shape[0], -1), dim=-1)
       loss = torch.mean(loss)
 
+      #TODO
+
+      generated_images = perturbed_samples_x.view(-1, sde.config.data.channels, sde.config.data.image_size, sde.config.data.image_size)
+      for idx, img in enumerate(generated_images_np):
+        # If the images are grayscale (1 channel), squeeze the channel dimension
+        if img.shape[0] == 1:
+            img = img.squeeze(0)
+
+        # Display the image
+        plt.imshow(img, cmap="gray")
+        plt.show()
+
       return loss
 
     else:
