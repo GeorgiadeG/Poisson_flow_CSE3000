@@ -125,7 +125,9 @@ def get_dataset(config, uniform_dequantization=False, evaluation=False):
 
     def resize_op(img):
       img = tf.image.convert_image_dtype(img, tf.float32)
-      return tf.image.resize(img, [config.data.image_size, config.data.image_size], antialias=True)
+      img = tf.image.grayscale_to_rgb(img)
+      img = tf.image.pad_to_bounding_box(img, 2, 2, 32, 32)
+      return img
 
   elif config.data.dataset == 'SVHN':
     dataset_builder = tfds.builder('svhn_cropped')

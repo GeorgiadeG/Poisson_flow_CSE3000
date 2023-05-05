@@ -22,6 +22,25 @@ import numpy as np
 from models import utils as mutils
 from methods import VESDE, VPSDE
 from models import utils_poisson
+import matplotlib.pyplot as plt
+from pathlib import Path
+from PIL import Image
+import cv2
+from torchvision import transforms
+from skimage.color import rgb2gray
+
+# # Load the pre-trained MNIST model
+# model = torch.hub.load('pytorch/vision', 'mnist', pretrained=True)
+
+# # Set the model to evaluation mode
+# model.eval()
+
+# Define the transformation pipeline to resize the image to 28x28 and convert it to a tensor
+transform = transforms.Compose([
+    transforms.Resize((28, 28)),
+    transforms.ToTensor()
+])
+
 
 def get_optimizer(config, params):
   """Returns a flax optimizer object based on `config`."""
@@ -128,16 +147,53 @@ def get_loss_fn(sde, train, reduce_mean=True, continuous=True, eps=1e-5, method_
       loss = torch.mean(loss)
 
       #TODO
+      output_dir = Path('./generated_images')
+      output_dir.mkdir(parents=True, exist_ok=True)
+
+      
 
       generated_images = perturbed_samples_x.view(-1, sde.config.data.channels, sde.config.data.image_size, sde.config.data.image_size)
-      for idx, img in enumerate(generated_images_np):
-        # If the images are grayscale (1 channel), squeeze the channel dimension
-        if img.shape[0] == 1:
-            img = img.squeeze(0)
+      generated_images_np = (generated_images.cpu().detach().numpy() * 255).astype(np.uint8)
+      for idx, img in enumerate(generated_images_np):  
+          # If the images are grayscale (1 channel), squeeze the channel dimension
+          if img.shape[0] == 1:
+              img = img.squeeze(0)
+          else:  # transpose the dimensions for color images
+              img = np.transpose(img, (1, 2, 0))
 
-        # Display the image
-        plt.imshow(img, cmap="gray")
-        plt.show()
+          # Convert the image to a PIL Image object
+          pil_img = Image.fromarray(img)
+
+          # pil_img = pil_img.convert("L")
+
+          # Apply the transform to the image
+          # gray_img = rgb2gray(pil_img)
+
+          # # Apply the transformation pipeline to the image
+          # tensor_img = transform(gray_img)
+
+          # # Add an extra batch dimension to the tensor
+          # tensor_img = tensor_img.unsqueeze(0)
+
+          # Pass the image through the model to get the predicted class label
+          # with torch.no_grad():
+          #     logits = model(tensor_img)
+          #     pred = logits.argmax(dim=1).item()
+          #     print(f"Generated image {idx} is classified as digit {pred}")
+          
+          # Save the image to a file
+          output_file = output_dir / f'image_{idx}.png'
+          plt.imsave(output_file, pil_img)
+
+          # plt.figure()  # create a new figure
+          # plt.imshow(img, cmap="gray" if len(img.shape)==2 else None)  # use cmap only for grayscale images
+
+          # Save the figure to a file
+          # output_file = output_dir / f'image_{idx}.png'
+          # plt.savefig(output_file)
+
+          # plt.close()  # close the figure
+          break
 
       return loss
 
