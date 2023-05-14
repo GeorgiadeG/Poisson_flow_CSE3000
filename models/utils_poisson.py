@@ -2,7 +2,7 @@ import torch
 import numpy as np
 
 
-def forward_pz(sde, config, samples_batch, m):
+def forward_pz(sde, config, samples_batch, m, labels):
     """Perturbing the augmented training data. See Algorithm 2 in PFGM paper.
 
     Args:
@@ -14,6 +14,7 @@ def forward_pz(sde, config, samples_batch, m):
     Returns:
       Perturbed samples
     """
+    label_to_sigma = {0: 0.1, 1: 0.2, 2: 0.3, 3: 0.4, 4: 0.5, 5: 0.6, 6: 0.7, 7: 0.8, 8: 0.9, 9: 1.0}
     tau = config.training.tau
     z = torch.randn((len(samples_batch), 1, 1, 1)).to(samples_batch.device) * config.model.sigma_end
     z = z.abs()
@@ -28,7 +29,13 @@ def forward_pz(sde, config, samples_batch, m):
     data_dim = config.data.channels * config.data.image_size * config.data.image_size
     multiplier = (1+tau) ** m
 
-    noise = torch.randn_like(samples_batch).reshape(len(samples_batch), -1) * config.model.sigma_end
+    # Assume `labels` is a tensor containing the label of each sample
+    if labels is not None:
+        assert labels is instanceof(torch.Tensor)
+        sigmas = torch.tensor([label_to_sigma[label.item()] for label in labels])
+        noise = torch.randn_like(samples_batch) * sigmas.view(-1, 1, 1, 1)
+    else:
+        noise = torch.randn_like(samples_batch).reshape(len(samples_batch), -1) * config.model.sigma_end
     norm_m = torch.norm(noise, p=2, dim=1) * multiplier
     # Perturb z
     perturbed_z = z.squeeze() * multiplier

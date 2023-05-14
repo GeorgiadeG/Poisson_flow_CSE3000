@@ -92,7 +92,7 @@ def get_loss_fn(sde, train, reduce_mean=True, continuous=True, eps=1e-5, method_
 
       m = torch.rand((samples_batch.shape[0],), device=samples_batch.device) * sde.M
       # Perturb the (augmented) mini-batch data
-      perturbed_samples_vec = utils_poisson.forward_pz(sde, sde.config, samples_batch, m)
+      perturbed_samples_vec = utils_poisson.forward_pz(sde, sde.config, samples_batch, m, labels)
 
       with torch.no_grad():
         real_samples_vec = torch.cat(
