@@ -25,6 +25,7 @@ import copy
 import numpy as np
 import tensorflow as tf
 import tensorflow_gan as tfgan
+import matplotlib.pyplot as plt
 import logging
 # Keep the import below for registering all model definitions
 from models import ncsnv2, ncsnpp
@@ -41,6 +42,8 @@ import torch
 torch.cuda.empty_cache()
 from torch.utils import tensorboard
 from torchvision.utils import make_grid, save_image
+from torch import nn
+from torchvision import models
 from utils import save_checkpoint, restore_checkpoint
 import datasets_utils.celeba
 
@@ -56,6 +59,18 @@ if gpus:
   except RuntimeError as e:
     # Memory growth must be set before GPUs have been initialized
     print(e)
+
+def save_images_and_labels(image_batch, label_batch, output_dir='output_images'):
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+        
+    num_images = len(image_batch)
+    for idx in range(5):
+        image = image_batch[idx].permute(1, 2, 0).cpu().numpy()
+        label = label_batch[idx].item()
+        filename = f"index_{idx}_label_{label}.png"
+        filepath = os.path.join(output_dir, filename)
+        plt.imsave(filepath, image)
 
 def train(config, workdir):
   """Runs the training pipeline.
@@ -149,11 +164,16 @@ def train(config, workdir):
         train_iter = iter(train_ds)
         batch = next(train_iter)[0].cuda()
     else:
-      batch = torch.from_numpy(next(train_iter)['image']._numpy()).to(config.device).float()
+      train_batch = next(train_iter)
+      batch = torch.from_numpy(train_batch['image']._numpy()).to(config.device).float()
       batch = batch.permute(0, 3, 1, 2)
+      label_batch = torch.from_numpy(train_batch['label']._numpy()).to(config.device).long()
+      save_images_and_labels(batch,label_batch)
     batch = scaler(batch)
     # Execute one training step
-    loss = train_step_fn(state, batch)
+    # print(label_batch)
+
+    loss = train_step_fn(state, batch,label_batch)
     if step % config.training.log_freq == 0:
       logging.info("step: %d, training_loss: %.5e" % (step, loss.item()))
       writer.add_scalar("training_loss", loss, step)

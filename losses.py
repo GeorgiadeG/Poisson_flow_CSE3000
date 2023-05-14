@@ -29,19 +29,6 @@ import cv2
 from torchvision import transforms
 from skimage.color import rgb2gray
 
-# # Load the pre-trained MNIST model
-# model = torch.hub.load('pytorch/vision', 'mnist', pretrained=True)
-
-# # Set the model to evaluation mode
-# model.eval()
-
-# Define the transformation pipeline to resize the image to 28x28 and convert it to a tensor
-transform = transforms.Compose([
-    transforms.Resize((28, 28)),
-    transforms.ToTensor()
-])
-
-
 def get_optimizer(config, params):
   """Returns a flax optimizer object based on `config`."""
   if config.optim.optimizer == 'Adam':
@@ -87,7 +74,7 @@ def get_loss_fn(sde, train, reduce_mean=True, continuous=True, eps=1e-5, method_
   """
   reduce_op = torch.mean if reduce_mean else lambda *args, **kwargs: 0.5 * torch.sum(*args, **kwargs)
 
-  def loss_fn(model, batch):
+  def loss_fn(model, batch, labels=None):
     """Compute the loss function.
 
     Args:
@@ -146,55 +133,6 @@ def get_loss_fn(sde, train, reduce_mean=True, continuous=True, eps=1e-5, method_
       loss = reduce_op(loss.reshape(loss.shape[0], -1), dim=-1)
       loss = torch.mean(loss)
 
-      #TODO
-      output_dir = Path('./generated_images')
-      output_dir.mkdir(parents=True, exist_ok=True)
-
-      
-
-      generated_images = perturbed_samples_x.view(-1, sde.config.data.channels, sde.config.data.image_size, sde.config.data.image_size)
-      generated_images_np = (generated_images.cpu().detach().numpy() * 255).astype(np.uint8)
-      for idx, img in enumerate(generated_images_np):  
-          # If the images are grayscale (1 channel), squeeze the channel dimension
-          if img.shape[0] == 1:
-              img = img.squeeze(0)
-          else:  # transpose the dimensions for color images
-              img = np.transpose(img, (1, 2, 0))
-
-          # Convert the image to a PIL Image object
-          pil_img = Image.fromarray(img)
-
-          # pil_img = pil_img.convert("L")
-
-          # Apply the transform to the image
-          # gray_img = rgb2gray(pil_img)
-
-          # # Apply the transformation pipeline to the image
-          # tensor_img = transform(gray_img)
-
-          # # Add an extra batch dimension to the tensor
-          # tensor_img = tensor_img.unsqueeze(0)
-
-          # Pass the image through the model to get the predicted class label
-          # with torch.no_grad():
-          #     logits = model(tensor_img)
-          #     pred = logits.argmax(dim=1).item()
-          #     print(f"Generated image {idx} is classified as digit {pred}")
-          
-          # Save the image to a file
-          output_file = output_dir / f'image_{idx}.png'
-          plt.imsave(output_file, pil_img)
-
-          # plt.figure()  # create a new figure
-          # plt.imshow(img, cmap="gray" if len(img.shape)==2 else None)  # use cmap only for grayscale images
-
-          # Save the figure to a file
-          # output_file = output_dir / f'image_{idx}.png'
-          # plt.savefig(output_file)
-
-          # plt.close()  # close the figure
-          break
-
       return loss
 
     else:
@@ -231,7 +169,7 @@ def get_step_fn(sde, train, optimize_fn=None, reduce_mean=False, method_name=Non
   loss_fn = get_loss_fn(sde, train, reduce_mean=reduce_mean,
                             continuous=True, method_name=method_name)
 
-  def step_fn(state, batch):
+  def step_fn(state, batch, labels=None):
     """Running one step of training or evaluation.
 
     This function will undergo `jax.lax.scan` so that multiple steps can be pmapped and jit-compiled together
@@ -249,7 +187,7 @@ def get_step_fn(sde, train, optimize_fn=None, reduce_mean=False, method_name=Non
     if train:
       optimizer = state['optimizer']
       optimizer.zero_grad()
-      loss = loss_fn(model, batch)
+      loss = loss_fn(model, batch, labels=labels)
       loss.backward()
       optimize_fn(optimizer, model.parameters(), step=state['step'])
       state['step'] += 1
