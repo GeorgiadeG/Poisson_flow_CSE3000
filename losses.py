@@ -86,13 +86,16 @@ def get_loss_fn(sde, train, reduce_mean=True, continuous=True, eps=1e-5, method_
     """
     if method_name == 'poisson':
 
+      labels_batch = None
       samples_full = batch
       # Get the mini-batch with size `training.small_batch_size`
       samples_batch = batch[: sde.config.training.small_batch_size]
+      if labels is not None:
+        labels_batch = labels[: sde.config.training.small_batch_size]
 
       m = torch.rand((samples_batch.shape[0],), device=samples_batch.device) * sde.M
       # Perturb the (augmented) mini-batch data
-      perturbed_samples_vec = utils_poisson.forward_pz(sde, sde.config, samples_batch, m, labels)
+      perturbed_samples_vec = utils_poisson.forward_pz(sde, sde.config, samples_batch, m, labels_batch)
 
       with torch.no_grad():
         real_samples_vec = torch.cat(
@@ -197,7 +200,7 @@ def get_step_fn(sde, train, optimize_fn=None, reduce_mean=False, method_name=Non
         ema = state['ema']
         ema.store(model.parameters())
         ema.copy_to(model.parameters())
-        loss = loss_fn(model, batch)
+        loss = loss_fn(model, batch, labels=labels)
         ema.restore(model.parameters())
 
     return loss

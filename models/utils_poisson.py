@@ -14,7 +14,7 @@ def forward_pz(sde, config, samples_batch, m, labels):
     Returns:
       Perturbed samples
     """
-    label_to_sigma = {0: 0.1, 1: 0.2, 2: 0.3, 3: 0.4, 4: 0.5, 5: 0.6, 6: 0.7, 7: 0.8, 8: 0.9, 9: 1.0}
+    label_to_sigma = {0: 0.01, 1: 0.02, 2: 0.03, 3: 0.04, 4: 0.05, 5: 0.06, 6: 0.07, 7: 0.08, 8: 0.09, 9: 0.1}
     tau = config.training.tau
     z = torch.randn((len(samples_batch), 1, 1, 1)).to(samples_batch.device) * config.model.sigma_end
     z = z.abs()
@@ -30,12 +30,20 @@ def forward_pz(sde, config, samples_batch, m, labels):
     multiplier = (1+tau) ** m
 
     # Assume `labels` is a tensor containing the label of each sample
-    if labels is not None:
-        assert labels is instanceof(torch.Tensor)
-        sigmas = torch.tensor([label_to_sigma[label.item()] for label in labels])
-        noise = torch.randn_like(samples_batch) * sigmas.view(-1, 1, 1, 1)
-    else:
+    # sigmas = torch.tensor([label_to_sigma[label.item()] for label in labels])
+
+    if labels is None:
         noise = torch.randn_like(samples_batch).reshape(len(samples_batch), -1) * config.model.sigma_end
+    else:
+        # Initialize noise tensor
+        noise = torch.zeros_like(samples_batch).reshape(len(samples_batch), -1)
+
+        # Iterate over the samples and labels
+        # Iterate over the samples and labels
+        for i, label in enumerate(labels):
+            sigma = label_to_sigma[label.item()]
+            noise[i] = torch.randn(samples_batch.shape[1:]).to(samples_batch.device).reshape(-1) * sigma
+
     norm_m = torch.norm(noise, p=2, dim=1) * multiplier
     # Perturb z
     perturbed_z = z.squeeze() * multiplier
