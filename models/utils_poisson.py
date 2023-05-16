@@ -14,7 +14,9 @@ def forward_pz(sde, config, samples_batch, m, labels):
     Returns:
       Perturbed samples
     """
-    label_to_sigma = {0: 0.01, 1: 0.02, 2: 0.03, 3: 0.04, 4: 0.05, 5: 0.06, 6: 0.07, 7: 0.08, 8: 0.09, 9: 0.1}
+    label_to_sigma = {0: 0.01, 1: 0.01, 2: 0.01, 3: 0.01, 4: 0.01, 5: 0.01, 6: 0.01, 7: 0.01, 8: 0.01, 9: 0.01}
+    # Dictionary mapping labels to multipliers
+    label_to_multiplier = {0: 0.5, 1: 0.6, 2: 0.7, 3: 0.8, 4: 0.9, 5: 1.0, 6: 1.1, 7: 1.2, 8: 1.3, 9: 1.4}
     tau = config.training.tau
     z = torch.randn((len(samples_batch), 1, 1, 1)).to(samples_batch.device) * config.model.sigma_end
     z = z.abs()
@@ -51,7 +53,18 @@ def forward_pz(sde, config, samples_batch, m, labels):
     gaussian = torch.randn(len(samples_batch), data_dim).to(samples_batch.device)
     unit_gaussian = gaussian / torch.norm(gaussian, p=2, dim=1, keepdim=True)
     # Construct the perturbation for x
-    perturbation_x = unit_gaussian * norm_m[:, None]
+
+    if labels is None:
+        # If no labels are provided, create perturbation as before
+        perturbation_x = unit_gaussian * norm_m[:, None]
+    else:
+        # If labels are provided, create perturbation with multiplier based on label
+        perturbation_x = torch.zeros_like(samples_batch).reshape(len(samples_batch), -1)
+        for i, label in enumerate(labels):
+            multiplier = label_to_multiplier[label.item()]
+            perturbation_x[i] = unit_gaussian[i] * norm_m[i] * multiplier
+
+    perturbation_x = perturbation_x.view_as(samples_batch)
     perturbation_x = perturbation_x.view_as(samples_batch)
     # Perturb x
     perturbed_x = samples_batch + perturbation_x
