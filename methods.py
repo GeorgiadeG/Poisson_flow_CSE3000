@@ -2,7 +2,7 @@
 import abc
 import torch
 import numpy as np
-
+import torch.nn.functional as F
 
 class SDE(abc.ABC):
   """SDE abstract class. Functions are designed for a mini-batch of inputs."""
@@ -273,41 +273,11 @@ class Poisson():
   def M(self):
     return self.config.training.M
 
-  # def prior_sampling(self, shape):
-  #   """
-  #   Sampling initial data from p_prior on z=z_max hyperplane.
-  #   See Section 3.3 in PFGM paper
-  #   """
-  #
-  #   # Sample the radius from p_radius (details in Appendix A.4 in the PFGM paper)
-  #   max_z = self.config.sampling.z_max
-  #   N = self.config.data.channels * self.config.data.image_size * self.config.data.image_size + 1
-  #   # Sampling form inverse-beta distribution
-  #   samples_norm = np.random.beta(a=N / 2. - 0.5, b=0.5, size=shape[0])
-  #   inverse_beta = samples_norm / (1 - samples_norm)
-  #   # Sampling from p_radius(R) by change-of-variable
-  #   samples_norm = np.sqrt(max_z ** 2 * inverse_beta)
-  #   # clip the sample norm (radius)
-  #   samples_norm = np.clip(samples_norm, 1, self.config.sampling.upper_norm)
-  #   samples_norm = torch.from_numpy(samples_norm).cuda().view(len(samples_norm), -1)
-  #
-  #   # Uniformly sample the angle direction
-  #   gaussian = torch.randn(shape[0], N - 1).cuda()
-  #   unit_gaussian = gaussian / torch.norm(gaussian, p=2, dim=1, keepdim=True)
-  #
-  #   # Radius times the angle direction
-  #   init_samples = unit_gaussian * samples_norm
-  #
-  #   return init_samples.float().view(len(init_samples), self.config.data.num_channels,
-  #                               self.config.data.image_size, self.config.data.image_size)
-
-  def prior_sampling(self, shape, desired_label=None):
+  def prior_sampling(self, shape):
     """
     Sampling initial data from p_prior on z=z_max hyperplane.
     See Section 3.3 in PFGM paper
     """
-    # Dictionary mapping labels to multipliers
-    label_to_multiplier = {0: 0.5, 1: 0.6, 2: 0.7, 3: 0.8, 4: 0.9, 5: 1.0, 6: 1.1, 7: 1.2, 8: 1.3, 9: 1.4}
 
     # Sample the radius from p_radius (details in Appendix A.4 in the PFGM paper)
     max_z = self.config.sampling.z_max
@@ -325,17 +295,24 @@ class Poisson():
     gaussian = torch.randn(shape[0], N - 1).cuda()
     unit_gaussian = gaussian / torch.norm(gaussian, p=2, dim=1, keepdim=True)
 
-    # Apply label-specific multiplier
-    if desired_label is not None:
-      multiplier = label_to_multiplier[desired_label]
-    else:
-      # If no desired label is provided, use a default multiplier (for example, 1)
-      multiplier = 1
     # Radius times the angle direction
-    init_samples = unit_gaussian * samples_norm * multiplier
+    init_samples = unit_gaussian * samples_norm
+    init_samples = init_samples.float().view(len(init_samples), self.config.data.num_channels,
+                                self.config.data.image_size, self.config.data.image_size)
 
-    return init_samples.float().view(len(init_samples), self.config.data.num_channels,
-                                     self.config.data.image_size, self.config.data.image_size)
+    # Create a one-hot encoding for class '0' across 10 classes
+    one_hot_vector = torch.zeros(10).cuda()
+    one_hot_vector[4] = 1.0
+
+    # Extend dimensions to match init_samples
+    one_hot_labels = one_hot_vector.view(1, 1, 1, -1).repeat(shape[0], self.config.data.num_channels, 1, 1)
+
+    # Replace last 10 digits of last row of every channel of every image with the one-hot encoding tensor
+    for i in range(shape[0]):
+        for j in range(self.config.data.num_channels):
+            # init_samples[i, j, -1, -10:] = one_hot_labels[i, j, 0, :]
+            init_samples[i, j, :, :] = init_samples[i, j, :, :] * 0.1
+    return init_samples
 
   def ode(self, net_fn, x, t):
 

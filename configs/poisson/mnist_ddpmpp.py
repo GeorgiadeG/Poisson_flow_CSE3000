@@ -31,6 +31,7 @@ def get_config():
   training.tau = 0.03
   training.snapshot_freq = 500
   training.model = 'ddpmpp'
+  training.M = 226
 
   # data
   data = config.data
@@ -47,9 +48,9 @@ def get_config():
   #sampling.ode_solver = 'forward_euler'
   #sampling.ode_solver = 'improved_euler'
   sampling.N = 100
-  sampling.z_max = 40
+  sampling.z_max = 7
   sampling.z_min = 1e-3
-  sampling.upper_norm = 3000
+  sampling.upper_norm = 441
   # verbose
   sampling.vs = False
 

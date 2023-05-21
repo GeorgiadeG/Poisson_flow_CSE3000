@@ -107,6 +107,11 @@ def get_dataset(config, uniform_dequantization=False, evaluation=False):
     dataset_builder = tfds.builder('mnist')
     train_split_name = 'train'
     eval_split_name = 'test'
+    def resize_op(img):
+      img = tf.image.convert_image_dtype(img, tf.float32)
+      img = tf.image.grayscale_to_rgb(img)
+      img = tf.image.pad_to_bounding_box(img, 2, 2, 32, 32)
+      return img
 
     def preprocess_fn(d):
         """Basic preprocessing function scales data to [0, 1) and randomly flips."""
@@ -116,18 +121,11 @@ def get_dataset(config, uniform_dequantization=False, evaluation=False):
         # Convert grayscale to RGB
         img = tf.py_function(grayscale_to_rgb, [img], tf.float32)
         img.set_shape([config.data.image_size, config.data.image_size, 3])
-        
-        if config.data.random_flip and not evaluation:
-            img = tf.image.random_flip_left_right(img)
+
         if uniform_dequantization:
             img = (tf.random.uniform(img.shape, dtype=tf.float32) + img * 255.) / 256.
         return dict(image=img, label=d.get('label', None))
 
-    def resize_op(img):
-      img = tf.image.convert_image_dtype(img, tf.float32)
-      img = tf.image.grayscale_to_rgb(img)
-      img = tf.image.pad_to_bounding_box(img, 2, 2, 32, 32)
-      return img
 
   elif config.data.dataset == 'SVHN':
     dataset_builder = tfds.builder('svhn_cropped')
