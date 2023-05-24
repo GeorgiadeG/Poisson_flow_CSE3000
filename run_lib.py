@@ -324,7 +324,7 @@ def evaluate(config,
   inceptionv3 = config.data.image_size >= 256
   inception_model = evaluation.get_inception_model(inceptionv3=inceptionv3)
 
-  begin_ckpt = config.eval.begin_ckpt
+  begin_ckpt = 5
   logging.info("begin checkpoint: %d" % (begin_ckpt,))
 
   for ckpt in range(begin_ckpt, config.eval.end_ckpt + 1):
